@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#09090d">
+<link rel="manifest" href="manifest.json">
+<title>My Coach</title>
+<style>
+:root{--bg:#09090d;--card:#15151c;--line:#292934;--muted:#94949f;--text:#f7f7fa}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display",Arial,sans-serif}
+.app{max-width:560px;margin:auto;padding:calc(16px + env(safe-area-inset-top)) 16px 105px}
+.page{display:none}.page.active{display:block}h1{font-size:34px;margin:4px 0}h2{font-size:21px;margin:0 0 14px}.muted{color:var(--muted)}
+.card{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:18px;margin:12px 0}.hero{padding:22px;background:linear-gradient(145deg,#1d1d28,#111117)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.stat{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:15px}.big{font-size:25px;font-weight:800}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px}.pill{background:#292932;border-radius:99px;padding:6px 9px;font-size:12px}
+button{border:0;border-radius:14px;padding:13px 15px;background:#f4f4f6;color:#111;font-weight:750;font-size:15px}button.dark{background:#25252e;color:#fff}button.wide{width:100%}
+.actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}.actions button{min-height:62px}
+input,select,textarea{width:100%;background:#0f0f15;border:1px solid #30303a;color:#fff;border-radius:13px;padding:13px;font-size:15px;margin:5px 0 10px}
+textarea{min-height:90px;resize:vertical}label{font-size:13px;color:#aaaab4}
+.food-photo{width:100%;max-height:270px;object-fit:cover;border-radius:16px;margin-top:8px;display:none}
+.task{display:flex;gap:11px;align-items:center;padding:12px 0;border-bottom:1px solid #282832}.task:last-child{border:0}
+.check{width:27px;height:27px;border-radius:50%;padding:0;background:#292932;color:#fff}.done .check{background:#fff;color:#111}.done .tasktext{text-decoration:line-through;color:#777}
+.exercise{padding:13px 0;border-bottom:1px solid #282832}.exercise:last-child{border:0}
+nav{position:fixed;z-index:10;left:0;right:0;bottom:0;background:rgba(9,9,13,.94);backdrop-filter:blur(18px);border-top:1px solid #282832;padding:9px max(10px,calc((100vw - 560px)/2 + 10px)) calc(9px + env(safe-area-inset-bottom));display:flex;justify-content:space-around}
+nav button{background:none;color:#858590;padding:6px 9px;font-size:12px}nav button.active{color:#fff}.notice{font-size:12px;color:#a7a7b1;line-height:1.45}
+video{width:100%;border-radius:16px;background:#000;display:none;margin-top:10px}
+</style>
+</head>
+<body>
+<div class="app">
+
+<section id="home" class="page active">
+<h1>My Coach 👋</h1><div class="muted" id="today"></div>
+<div class="card hero"><div class="row"><div><div class="muted">Current streak</div><div class="big" id="streak">0 🔥</div></div><span class="pill">Personal</span></div><p class="muted">Training, food and daily habits in one place.</p></div>
+<div class="actions">
+<button onclick="showPage('nutrition')">📸 Scan Food</button>
+<button onclick="showPage('workout')">🏋️ AI Workout</button>
+<button class="dark" onclick="showPage('nutrition')">＋ Log Food</button>
+<button class="dark" onclick="showPage('coach')">🧠 AI Coach</button>
+</div>
+<div class="card"><div class="row"><h2>Today's plan</h2><span class="pill" id="pct">0%</span></div><div id="tasks"></div></div>
+</section>
+
+<section id="nutrition" class="page">
+<h1>Nutrition</h1><div class="muted">Take a photo, scan a barcode, or type your food.</div>
+<div class="card"><h2>📷 Meal photo</h2>
+<input id="photo" type="file" accept="image/*" capture="environment"><img id="preview" class="food-photo">
+<button class="wide dark" onclick="analyzePhoto()">Analyze photo</button>
+<p class="notice">The camera works now. Full AI food recognition needs a secure AI vision backend, which can be connected next.</p></div>
+<div class="card"><h2>📦 Barcode</h2>
+<button class="wide" onclick="startBarcode()">Open barcode scanner</button>
+<video id="video" playsinline></video><div id="barcodeResult" class="muted"></div>
+<input id="barcodeManual" inputmode="numeric" placeholder="Or enter barcode number">
+<button class="dark" onclick="useBarcode()">Use barcode</button></div>
+<div class="card"><h2>⌨️ Manual food</h2>
+<input id="foodName" placeholder="Food or meal name">
+<textarea id="foodNote" placeholder="Optional notes"></textarea>
+<button onclick="addFood()">Add to today's log</button></div>
+<div class="card"><h2>Today's food</h2><div id="foodLog" class="muted">Nothing logged yet.</div></div>
+</section>
+
+<section id="workout" class="page">
+<h1>AI Workout Maker</h1><div class="muted">Build a workout around your goal, time and equipment.</div>
+<div class="card">
+<label>Goal</label><select id="goal"><option>General fitness</option><option>Strength</option><option>Running</option><option>Full body</option><option>Upper body</option><option>Lower body</option></select>
+<label>Time</label><select id="time"><option value="20">20 minutes</option><option value="30" selected>30 minutes</option><option value="45">45 minutes</option><option value="60">60 minutes</option></select>
+<label>Equipment</label><select id="equipment"><option value="none">No equipment</option><option value="home">Home/basic equipment</option><option value="gym">Gym</option></select>
+<label>Experience</label><select id="level"><option>Beginner</option><option>Intermediate</option></select>
+<label>Anything to avoid?</label><input id="avoid" placeholder="e.g. jumping">
+<button class="wide" onclick="makeWorkout()">✨ Make my workout</button></div>
+<div id="workoutOutput"></div>
+<p class="notice">The generator is a local prototype. A true AI generator can be connected through a secure backend without exposing an API key in the app.</p>
+</section>
+
+<section id="coach" class="page">
+<h1>AI Coach</h1><div class="muted">Ask about training, routines or habits.</div>
+<div class="card"><textarea id="coachInput" placeholder="Ask Coach something..."></textarea><button onclick="coachReply()">Ask Coach</button><div id="coachReply" style="display:none;margin-top:12px;padding:12px;border-radius:14px;background:#202027"></div></div>
+</section>
+
+<section id="progress" class="page">
+<h1>Progress</h1><div class="muted">Your consistency at a glance.</div>
+<div class="grid"><div class="stat"><div class="muted">Tasks done</div><div class="big" id="doneStat">0</div></div><div class="stat"><div class="muted">Foods logged</div><div class="big" id="foodStat">0</div></div></div>
+<div class="card"><h2>Workout history</h2><div id="history" class="muted">No generated workouts yet.</div></div>
+</section>
+</div>
+
+<nav>
+<button class="active" onclick="showPage('home',this)">⌂<br>Home</button>
+<button onclick="showPage('nutrition',this)">🥗<br>Food</button>
+<button onclick="showPage('workout',this)">🏋️<br>Workout</button>
+<button onclick="showPage('coach',this)">🧠<br>Coach</button>
+<button onclick="showPage('progress',this)">▥<br>Progress</button>
+</nav>
+
+<script>
+const KEY="myCoachV2";
+let d=JSON.parse(localStorage.getItem(KEY)||'{"tasks":[{"t":"Drink water regularly","done":false},{"t":"Move for 30 minutes","done":false},{"t":"Complete today’s training","done":false},{"t":"Get a good night’s sleep","done":false}],"foods":[],"workouts":[],"streak":0}');
+function save(){localStorage.setItem(KEY,JSON.stringify(d));render()}
+function render(){
+document.getElementById('today').textContent=new Date().toLocaleDateString(undefined,{weekday:'long',day:'numeric',month:'long'});
+let done=d.tasks.filter(x=>x.done).length;
+document.getElementById('streak').textContent=d.streak+' 🔥';document.getElementById('pct').textContent=Math.round(done/d.tasks.length*100)+'%';
+document.getElementById('doneStat').textContent=done;document.getElementById('foodStat').textContent=d.foods.length;
+document.getElementById('tasks').innerHTML=d.tasks.map((x,i)=>'<div class="task '+(x.done?'done':'')+'"><button class="check" onclick="toggleTask('+i+')">'+(x.done?'✓':'')+'</button><span class="tasktext">'+x.t+'</span></div>').join('');
+document.getElementById('foodLog').innerHTML=d.foods.length?d.foods.map(x=>'<div class="task"><span>🥗</span><span>'+x.name+'<br><small class="muted">'+(x.note||'Manual entry')+'</small></span></div>').join(''):'Nothing logged yet.';
+document.getElementById('history').innerHTML=d.workouts.length?d.workouts.map(x=>'<div class="exercise"><b>'+x.title+'</b><br><span class="muted">'+x.date+'</span></div>').join(''):'No generated workouts yet.';
+}
+function toggleTask(i){d.tasks[i].done=!d.tasks[i].done;if(d.tasks.every(x=>x.done))d.streak++;save()}
+function showPage(id,btn){document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));document.getElementById(id).classList.add('active');document.querySelectorAll('nav button').forEach(x=>x.classList.remove('active'));if(btn)btn.classList.add('active');window.scrollTo(0,0)}
+document.getElementById('photo').addEventListener('change',e=>{let f=e.target.files[0];if(f){let p=document.getElementById('preview');p.src=URL.createObjectURL(f);p.style.display='block'}});
+function analyzePhoto(){alert(document.getElementById('photo').files[0]?'Photo captured. AI identification needs the secure backend connection.':'Take a meal photo first.')}
+async function startBarcode(){
+if(!('BarcodeDetector' in window)){alert('Barcode scanning is not exposed by this browser. Use the manual barcode field below for now.');return}
+let v=document.getElementById('video');
+try{let stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}}});v.srcObject=stream;v.style.display='block';await v.play();let detector=new BarcodeDetector();let scan=async()=>{try{let c=await detector.detect(v);if(c.length){document.getElementById('barcodeManual').value=c[0].rawValue;document.getElementById('barcodeResult').textContent='Scanned: '+c[0].rawValue;stream.getTracks().forEach(t=>t.stop());v.style.display='none';return}}catch(e){}requestAnimationFrame(scan)};scan()}catch(e){alert('Camera permission was blocked. Enter the barcode manually instead.')}}
+function useBarcode(){let b=document.getElementById('barcodeManual').value.trim();document.getElementById('barcodeResult').textContent=b?'Barcode entered: '+b+' (product lookup can be connected next).':'Enter a barcode first.'}
+function addFood(){let n=document.getElementById('foodName').value.trim();if(!n)return;d.foods.unshift({name:n,note:document.getElementById('foodNote').value.trim()});document.getElementById('foodName').value='';document.getElementById('foodNote').value='';save()}
+function makeWorkout(){
+let goal=document.getElementById('goal').value,time=+document.getElementById('time').value,equip=document.getElementById('equipment').value,avoid=document.getElementById('avoid').value.toLowerCase();
+let base=goal==='Running'?['Easy run','Walking recovery','Faster intervals']:goal==='Upper body'?['Push-ups','Backpack rows','Pike push-ups','Plank']:goal==='Lower body'?['Bodyweight squats','Reverse lunges','Glute bridges','Calf raises']:['Squats','Push-ups','Rows','Reverse lunges','Plank'];
+if(equip==='gym'&&goal!=='Running')base=goal==='Lower body'?['Leg press','Romanian deadlift','Split squat','Calf raises']:['Lat pulldown','Chest press','Seated row','Goblet squat','Plank'];
+base=base.filter(x=>!avoid||!x.toLowerCase().includes(avoid));let count=time<=20?3:time<=30?4:time<=45?5:6;let ex=base.slice(0,count),title=goal+' • '+time+' min';
+let html='<div class="card"><div class="row"><h2>'+title+'</h2><span class="pill">'+equip+'</span></div>';
+ex.forEach((x,i)=>html+='<div class="exercise"><b>'+x+'</b><br><span class="muted">'+(goal==='Running'?(i===0?'8 min easy':i===1?'2 min walk':'4 × 1 min quicker / 2 min easy'):'3 sets × '+(i===4?'30 sec':'8–12 reps')+' • rest 60–90 sec')+'</span></div>');
+html+='<button class="wide dark" onclick="completeWorkout()">Mark workout complete</button></div>';document.getElementById('workoutOutput').innerHTML=html;window.generated={title}}
+function completeWorkout(){if(!window.generated)return;d.workouts.unshift({title:window.generated.title,date:new Date().toLocaleDateString()});save();alert('Workout saved.')}
+function coachReply(){let q=document.getElementById('coachInput').value.toLowerCase();let r=q.includes('workout')?'Use AI Workout to make a session around your time, goal and equipment.':q.includes('food')?'Use Food to photograph or manually log a meal. Focus on regular, balanced meals rather than restrictive targets.':'Pick one useful action you can finish today, then build from there.';let el=document.getElementById('coachReply');el.textContent=r;el.style.display='block'}
+render();
+</script>
+</body>
+</html>
